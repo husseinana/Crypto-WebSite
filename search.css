@@ -1,0 +1,55 @@
+
+.searchsection
+{
+    margin-top: 5%;
+}
+
+.info1
+{
+    font-size: xx-large;
+    /* color: black; */
+}
+
+.info2
+{
+    font-size: large;
+    font-weight: bold;
+    color: black;
+}
+.iconcolor{
+    color: #b9d6f2;
+}
+.mysearch
+{
+    width: 50%;
+    border: 1px solid;
+    border-width: 2px;
+    border-radius: 50px;
+    border-color:#b9d6f2;
+    margin-left: 25%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    
+}
+
+
+.mysearch input
+{
+    border: none;
+    width: 80%;
+    height: 75px;
+}
+
+.mysearch input:focus { 
+    outline: none ;
+    border: none;
+    /* border-color: #b9d6f2; */
+    /* box-shadow: 0 0 10px #0353a4; */
+ }
+
+ ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: #061a40;
+    opacity: 0.5; /* Firefox */
+  }
+  
