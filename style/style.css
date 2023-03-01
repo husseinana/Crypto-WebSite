@@ -8,15 +8,14 @@ html,body
     padding: 0;
     margin: 0;
     height: 100%;
-    font-size: x-large;
+    font-size: small;
     text-align: center;
+
+
 }
-section header {
-    border-bottom:solid;
-    border-color: #006daa;
-    border-width: 1px ;
-    overflow: visible;
-}
+* {
+    scroll-behavior: smooth;
+  }
 
 section{
     height: 100%;
@@ -32,15 +31,19 @@ header,footer{
     display: flex;
     flex-direction: column;
     justify-content: center;
+    font-family: myFirstFont;
+
+
 }
 
 footer{
     border-top:solid;
     border-color: #006daa;
     border-width: 1px ;
-    font-weight: bold;
+    font-weight: lighter;
+    /* font-size: larger; */
     color: #061a40;
-    font-family: myFirstFont;
+    font-family: mySecoundFont;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -63,6 +66,11 @@ nav{
 
 .main::-webkit-scrollbar {
     display: none;
+  }
+
+
+  #mainTableSection> table>thead >tr>td{
+    font-weight: bold;
   }
 
 

@@ -76,5 +76,5 @@ item.chart = new Chart()
 
 Data.CryptoObject.push(item)
 
-console.log(Data)
+//console.log(Data)
 

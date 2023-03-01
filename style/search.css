@@ -1,0 +1,104 @@
+
+.searchsection
+{
+    margin-top: 5%;
+}
+
+.info1
+{
+    font-size: large;
+    /* color: black; */
+}
+
+.info2
+{
+    font-size: large;
+    font-weight: bold;
+    color: black;
+}
+.iconcolor{
+    color: #b9d6f2;
+}
+.mysearch
+{
+    width: 50%;
+    border: 1px solid;
+    border-width: 2px;
+    border-radius: 50px;
+    border-color:#b9d6f2;
+    margin-left: 25%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    
+}
+
+
+.mysearch input
+{
+    border: none;
+    width: 70%;
+    height: 40px;
+}
+
+.mysearch input:focus { 
+    outline: none ;
+    border: none;
+    /* border-color: #b9d6f2; */
+    /* box-shadow: 0 0 10px #0353a4; */
+ }
+
+ ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: #061a40;
+    opacity: 0.5; /* Firefox */
+  }
+  
+
+
+  /*Serch Section*/
+  #searchInputId {
+    position: relative;
+    display: inline-block;
+  }
+
+  #searchList {
+    /* Remove default list styling */
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 20%;
+    display: none;
+    position: absolute;
+    max-height: 200px;
+    overflow-y: scroll;
+  }
+
+  #searchList li a {
+    border: 1px solid #ddd;
+    /* Add a border to all links */
+    margin-top: -1px;
+    /* Prevent double borders */
+    background-color: #f6f6f6;
+    /* Grey background color */
+    padding: 12px;
+    /* Add some padding */
+    text-decoration: none;
+    /* Remove default text underline */
+    font-size: 18px;
+    /* Increase the font-size */
+    color: black;
+    /* Add a black text color */
+    display: block;
+    /* Make it into a block element to fill the whole list */
+  }
+
+  #searchList li a:hover:not(.header) {
+    background-color: #eee;
+    /* Add a hover effect to all links, except for headers */
+  }
+
+  #listDiv {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+  }
