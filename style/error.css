@@ -1,0 +1,27 @@
+#errorModal
+{
+   padding-top: 20%;
+   padding-left: 30%;
+}
+#errorModal > .modal-content{
+    width: 60%;
+}
+
+#errorModal > .modal-content > .container >span
+{
+    font-size: xx-large;
+}
+#errorModal > .modal-content > .container {
+    padding: 2%;
+    display: flex;
+    justify-content: space-around;
+}
+#errorModal > .modal-content > .container > p{
+    color: red;
+    font-size: xx-large;
+    font-family: Arial, Helvetica, sans-serif;
+    display: flex;
+    justify-self: center;
+    text-align: center;
+
+}

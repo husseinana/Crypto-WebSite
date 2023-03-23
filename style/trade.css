@@ -5,10 +5,37 @@
     border-bottom: 1px solid #061a40;
   }
 
-  .tradesectionnew>.leftBtns {
+
+  
+  .tradesectionnew>.midleBtns {
     display: flex;
     gap: 10px;
   }
+  .tradesectionnew>.midleBtns>p {
+    color: #061a40;
+    background-color: #b9d6f2;
+    width: 50px;
+    border-radius: 5px;
+    padding: 2px;
+    font-size: medium;
+    font-weight: bold;
+  }
+  .tradesectionnew>.midleBtns>p:hover {
+    color: white;
+    background-color: #b9d6f2;
+  }
+
+
+
+  .tradesectionnew>.leftBtns  {
+    display: flex;
+    gap: 10px;
+  }
+  .tradesectionnew>.rightBtns {
+    display: flex;
+    gap: 10px;
+  }
+
 
   .tradesectionnew>.leftBtns>p {
     color: #061a40;
@@ -20,7 +47,7 @@
     font-weight: bold;
   }
 
-  .tradesectionnew>p {
+  .tradesectionnew>.rightBtns>p {
     color: #061a40;
     background-color: #b9d6f2;
     width: 100px;
@@ -29,13 +56,16 @@
     font-size: medium;
     font-weight: bold;
   }
+  .tradesectionnew>.rightBtns .halfWidth{
+    width: 50px;
+  }
 
   .tradesectionnew>.leftBtns>p:hover {
     color: white;
     background-color: #b9d6f2;
   }
 
-  .tradesectionnew>p:hover {
+  .tradesectionnew>.rightBtns>p:hover {
     color: white;
     background-color: #b9d6f2;
   }
@@ -53,3 +83,139 @@
   #mainTableSection {
     border-bottom: 1px solid #061a40;
   }
+
+
+  #checkBoxTd {
+    min-width: 20px;
+    max-width: 20px;
+   
+}
+
+#checkBoxTd :hover {
+    color: darkgrey;
+}
+
+
+  .icon-red {
+    color: red;
+}
+.icon-green {
+  color: green;
+}
+
+
+/*---------------------------Backup*/
+.searchsection>* {
+  font-family: myFirstFont;
+  font-size: small;
+}
+
+
+.tradesectiontop1 {
+  margin-top: 5%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  font-size: small;
+  font-weight: bold;
+}
+
+.tradesectiontop1>p:nth-of-type(2) {
+  padding-top: 10px;
+  font-weight: normal;
+  font-size: small;
+  /* color:#003559 ; */
+}
+
+.tradebtn {
+  border: none;
+  background-color: #b9d6f2;
+  /* color: #061a40; */
+  font-family: myFirstFont;
+  font-size: small;
+}
+
+/* 
+.tradebtn :hover{
+  background-color: #061a40;
+  color: white;
+} */
+
+.onebtn {
+  border: 1px solid;
+  border-radius: 5px;
+  border-color: #b9d6f2;
+  background-color: #b9d6f2;
+  padding: 5px;
+  color: white;
+  font-weight: bold;
+}
+
+
+
+.onebtninside {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 5px;
+}
+
+.onebtn :hover {
+  color: #061a40;
+  /* background-color: white; */
+}
+
+.firstbtn {
+  border: 1px solid;
+  border-radius: 5px;
+  border-color: #b9d6f2;
+  background-color: #b9d6f2;
+  padding: 10px;
+  font-weight: bold;
+  color: #061a40;
+}
+
+/* .firstbtn :hover{
+  color: white;
+} */
+
+.tradesectiontop2 {
+  padding-top: 5%;
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+
+.table-striped>tbody>tr:nth-child(odd)>td {
+  background-color: white;
+}
+
+.table-striped>tbody>tr:nth-child(even)>td {
+  background-color: white;
+}
+
+.table-hover tbody tr:hover td,
+.table-hover tbody tr:hover th {
+  background-color: #b9d6f2;
+}
+
+
+#checkBoxTd {
+  min-width: 20px;
+  max-width: 20px;
+ 
+}
+
+#checkBoxTd :hover {
+  color: darkgrey;
+}
+
+.icon-red {
+  color: red;
+}
+
+.icon-green {
+  color: green;
+}

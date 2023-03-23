@@ -1,17 +1,30 @@
 /// <reference path="./jquery-3.6.3.js" />
 /// <reference path="./Utils.js" />
 
+const binanceAPIURL = "https://api.binance.com/api/v3/avgPrice?symbol="
+const binanceAPIKey = "JFm4ObCJOPX6QKQdYgHCnQF97GSz8X5mSzFxgPN4vf5kdmUGbC1v7icqvtsd3XTI"
+const binanceAPISecKey = "4WUxOHnQ1kw0438c2xnDhE6gD4fDnlbEh7q3vxck0lGvCOcBW3d6U3dKye3fgSxJ"
+
 
 const TickerURL = "https://api.coinpaprika.com/v1/tickers";
 const CoinListURL = "https://api.coinpaprika.com/v1/coins"
 const OHLCTodayURL = "https://api.coinpaprika.com/v1/coins/btc-bitcoin/ohlcv/today"
-const numOfCoins = 5
+const numOfCoins = 10
 const totalCoins = 10
+
+
+const CurrencyConverterURL = "https://api.freecurrencyapi.com/v1/latest?apikey=vnH5ObV9xVdtrYnYiFq1WkmhLaUfFmC43Cv6BqbW"
 
 let coinListArray;
 let coinInfoArray = [];
 let tickerArray = [];
 let tickerArrayLastDay = []
+let tickerArrayBinance = []
+let refreshIntervalID;
+let lineChartRef = null
+let CurrArr = null
+let currencySelected = "USD"
+
 const COLORS = [
     '#4dc9f6',
     '#f67019',
@@ -24,6 +37,9 @@ const COLORS = [
     '#8549ba',
     ''
 ];
+
+let colorMap = [];
+
 const labels = ['12PM', '1AM', '2AM', '3AM', '4AM', '5AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12AM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM'];
 const favIconEmpty = `<i class="bi bi-star"></i>`
 
@@ -36,6 +52,7 @@ $(() => {
 
 function eventInit() {
     $(document).on("click", "#chartsBtn", CompareCoins);
+    $(document).on("click", "#chartsBtnLive", CompareCoinsBinance);
     $(document).on("click", "#allCoins", AllCoins);
     $(document).on("click", "#gainersCoins", WinnerCoins);
     $(document).on("click", "#losersCoins", LoserCoins);
@@ -44,15 +61,65 @@ function eventInit() {
     $(document).on("click", "#favCoins", FavCoins);
     $(document).on("click", ".hideCoin", DeleteCoin);
 
+    $(document).on("click", "#USD", ChangeCurrency);
+    $(document).on("click", "#EUR", ChangeCurrency);
+    $(document).on("click", "#ILS", ChangeCurrency);
+
     $(".aboutection").hide()
 }
-function DeleteCoin()
-{
+function ChangeCurrency() {
+    let id = $(this).attr("id");
+    currencySelected = id;
+
+    $("#USD").css("color", "#061a40")
+    $("#EUR").css("color", "#061a40")
+    $("#ILS").css("color", "#061a40")
+    $(this).css("color", "white")
+
+    let cksIds = []
+    $('input:checked').each(function () {
+        var $this = $(this);
+        if ($this.is(":checked"))
+            cksIds.push($this.attr("name"));
+    });
+
+    DrawMainTable();
+    distroyChart("chartsSection")
+    for (let x of cksIds) {
+        $('[name="' + x + '"]').attr('checked', 'checked');
+    }
+}
+function GetCurrencyFactor() {
+    if (currencySelected == "USD")
+        return 1;
+    else if (currencySelected == "EUR")
+        return CurrArr.data["EUR"]
+    else if (currencySelected == "ILS")
+        return CurrArr.data["ILS"]
+
+}
+
+function GetCurrencySymbol() {
+    if (currencySelected == "USD")
+        return "&#36;";
+    else if (currencySelected == "EUR")
+        return "&euro;"
+    else if (currencySelected == "ILS")
+        return "&#8362;"
+}
+
+
+
+function FormatCurrency(num) {
+    return (num * GetCurrencyFactor()).toFixed(2)
+}
+
+function DeleteCoin() {
     let tr = $(this).closest("tr")
 
     var name = tr.find("td:eq(3)").text(); // get current row 3rd TD
     let coinToBeRemoved = ""
-    console.log(name)
+    // console.log(name)
     for (const coin of coinInfoArray) {
         if (coin.coinInfo.name == name) {
             coinToBeRemoved = coin
@@ -62,6 +129,8 @@ function DeleteCoin()
     const index = coinInfoArray.indexOf(coinToBeRemoved);
 
     const x = coinInfoArray.splice(index, 1);
+
+    removeColor(coinToBeRemoved.coinInfo.name)
 
     addToLocalStorage("CoinInfoArray", coinInfoArray);
     $(this).closest('tr').remove();
@@ -74,7 +143,7 @@ function FavCoinsClick() {
     if (!tr.hasClass("fav"))
         tr.addClass("fav")
     else
-        tr.removeClass("fav)")
+        tr.removeClass("fav")
 
     let i = $(this).children('i')
 
@@ -122,11 +191,103 @@ function FavCoins() {
 function CompareCoins() {
 
     var selected = [];
+    if ($('input:checked').length == 0) {
+        document.getElementById('errorMsg').innerHTML = 'Please select up to 5 coins to comapre ! '
+        document.getElementById('errorModal').style.display = 'block'
+        return
+    }
+
+    if ($('input:checked').length > 5) {
+        document.getElementById('errorMsg').innerHTML = 'Please select maximum 5 coins to compare ! '
+        document.getElementById('errorModal').style.display = 'block'
+        return
+    }
+
+    clearInterval(refreshIntervalID);
+
     tickerArrayLastDay = []
     $('input:checked').each(async function () {
-        await GetHistoricalData($(this).attr('name')).then(() => drawCharts())
+        await GetHistoricalData($(this).attr('name'), $(this).attr('symname')).then(() => drawCharts())
         //  drawChartMultiAxis()).then(() => DrawBarChart())
     });
+
+
+
+}
+function CompareCoinsBinance() {
+
+    if ($('input:checked').length == 0) {
+        document.getElementById('errorMsg').innerHTML = 'Please select up to 5 coins to comapre ! '
+        document.getElementById('errorModal').style.display = 'block'
+        return
+    }
+
+    if ($('input:checked').length > 5) {
+        document.getElementById('errorMsg').innerHTML = 'Please select maximum 5 coins to compare ! '
+        document.getElementById('errorModal').style.display = 'block'
+        return
+    }
+    lineChartRef = null
+    distroyChart("chartsSection")
+    hideChart();
+    // $("#ChartsModal").css("display","block");
+
+    tickerArrayBinance = []
+    clearInterval(refreshIntervalID);
+    refreshIntervalID = setInterval(
+        CompareCoinsBinanceAPI, 2000
+    )
+    showChart();
+
+}
+
+async function CompareCoinsBinanceAPI() {
+
+    let time = Date.now()
+
+    $('input:checked').each(async function () {
+        let coinID = $(this).attr('symname');
+        if (coinID != "USDT")
+            fetch(binanceAPIURL + coinID + 'USDT',
+                {
+                    method: "GET",
+                    withCredentials: true,
+                    headers: {
+                        // "CryptoWorldAPI": binanceAPIKey,
+                        // "Content-Type": "application/json"
+                    }
+                },
+                mode = "no-cors"
+            )
+                .then(r => r.json())
+                .then(function (j) {
+                    let p = parseFloat(j.price).toFixed(2);
+                    // let y = { coinID, p }
+                    // let t = tickerArrayBinance.find(x => x.time == time)
+                    // if (t == null)
+                    //     tickerArrayBinance.push({ time: time, value: [y] })
+                    // else
+                    //     t.value.push(y)
+
+                    //console.log(time + " : " + coinID + " : " + p)
+
+                    let curObj = tickerArrayBinance.find(x => x.coin == coinID)
+                    if (curObj == null)
+                        tickerArrayBinance.push({ coin: coinID, prices: [{ time: time, price: p }] })
+                    else
+                        curObj.prices.push({ time: time, price: p })
+                }
+                )
+                .then(() => drawChartsLive())
+                // .then(()=> showChart())
+                .catch(k => console.log(Date.now() + " : Error fetching coin (" + coinID + ") Coin dose not exist in Binance API" + k.message))
+
+    });
+}
+async function drawChartsLive() {
+    drawChartMultiAxisLive();
+    //document.getElementById('chartsSectionLive').scrollIntoView();
+    //DrawBarChart()
 }
 
 async function drawCharts() {
@@ -134,7 +295,7 @@ async function drawCharts() {
     document.getElementById('chartsSectiondiv').scrollIntoView();
     //DrawBarChart()
 }
-async function GetHistoricalData(coinid) {
+async function GetHistoricalData(coinid, symname) {
     console.log("GetHistoricalData..." + coinid)
     const today = new Date();
     let month = (today.getMonth() + 1).toString()
@@ -148,7 +309,7 @@ async function GetHistoricalData(coinid) {
 
     let todayFormat = `${today.getFullYear()}-${month}-${day}`
     let url = `${TickerURL}/${coinid}/historical?start=${todayFormat}&interval=1h`
-    console.log(url)
+    // console.log(url)
 
     let response = await fetch(url)
     let data = await response.json();
@@ -157,18 +318,58 @@ async function GetHistoricalData(coinid) {
     {
         todayFormat = `${today.getFullYear()}-${month}-${day - 1}`
         url = `${TickerURL}/${coinid}/historical?start=${todayFormat}&interval=1h`
-        console.log(url)
+        // console.log(url)
         response = await fetch(url)
         data = await response.json();
     }
-    tickerArrayLastDay.push({ coinid, data })
+    tickerArrayLastDay.push({ coinid: coinid, symname: symname, data: data })
 }
 
 
 // Main function to start the website needed functions
-function websiteInit() {
+async function websiteInit() {
     console.log("websiteInit...")
-    RefreshData();
+    $("body").css("cursor", "progress");
+
+    hidePage()
+    //RefreshData();
+    RefreshData2();
+    tickerArrayBinance = []
+
+    await GetCurConArrayAsync()
+}
+
+
+function hidePage() {
+    document.getElementById("mainTableSection").style.display = "none";
+    document.getElementById("loader").style.display = "block";
+}
+
+function showPage() {
+    setTimeout(() => {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("mainTableSection").style.display = "block";
+    },
+        1000)
+}
+
+
+function hideChart() {
+    document.getElementById("chartsSectiondiv").style.display = "none";
+    document.getElementById("loader-chart").style.display = "block";
+}
+function showChart() {
+    setTimeout(() => {
+        document.getElementById("loader-chart").style.display = "none";
+        document.getElementById("chartsSectiondiv").style.display = "block";
+    },
+        2000)
+    setTimeout(() => {
+        document.getElementById('chartsSectiondiv').scrollIntoView();
+    },
+        3000)
+
+
 }
 
 function RefreshData() {
@@ -201,6 +402,20 @@ async function GetCoinListArrayAsync() {
     coinListArray = coinListArr;
     addToLocalStorage("CoinListArray", coinListArr);
 }
+
+async function GetCurConArrayAsync() {
+    console.log("GetCurConArrayAsync...")
+    CurrArr = { data: { EUR: 0.93, ILS: 3.65 } }
+    try {
+        const response = await fetch(CurrencyConverterURL)
+        CurrArr = await response.json();
+    }
+    catch {
+        CurrArr = { data: { EUR: 0.93, ILS: 3.65 } }
+    }
+    addToLocalStorage("CurrArr", CurrArr);
+}
+
 
 async function GetCoinInfoArrayAsync() {
     console.log("GetCoinInfoArrayAsync...")
@@ -263,16 +478,20 @@ function addToLocalStorage(nameInLocalStorage, coinListArr) {
 
 
 function DrawMainTable() {
+    console.log("DrawMainTable")
     const myTableBody = document.getElementById("maintablebody")
     myTableBody.innerHTML = ""
     for (let i = 0; i < coinInfoArray.length; i++) {
         let coin = coinInfoArray[i]
-
         AddTableRow(coin)
     }
+    $("body").css("cursor", "default");
+    showPage()
 }
 
 function AddTableRow(coin) {
+    console.log("AddTableRow")
+
     const myTableBody = document.getElementById("maintablebody")
 
     const coinID = coin.id;
@@ -285,13 +504,11 @@ function AddTableRow(coin) {
 
     let favIcon = ""
 
-    if (coin.fav)
-    {
+    if (coin.fav) {
         favIcon = favIconFill
         changeClass += " fav"
     }
-    else
-    {
+    else {
         favIcon = favIconEmpty
     }
     let icn = ""
@@ -301,15 +518,15 @@ function AddTableRow(coin) {
     else if (change > 0)
         icn = `<i class="bi-arrow-up-right icon-green"></i>`
 
-    const html = `<td><input type="checkbox" class="chk" name="${coinID}"></td>
+    const html = `<td><input type="checkbox" class="chk" name="${coinID}" symname="${coin.coinInfo.symbol}"></td>
                 <td><img src="${coin.coinInfo.logo}" alt="" width=24></td>
                 <td>${coin.coinInfo.symbol}</td>
                 <td>${coin.coinInfo.name}</td>
-                <td>${nFormatter(coin.coinInfoOHLC[0].open.toFixed(2), 2)}</td>
-                <td>${nFormatter(coin.coinInfoOHLC[0].close.toFixed(2), 2)}</td>
+                <td>${GetCurrencySymbol()} ${nFormatter(FormatCurrency(coin.coinInfoOHLC[0].open), 2)}  </td>
+                <td>${GetCurrencySymbol()} ${nFormatter(FormatCurrency(coin.coinInfoOHLC[0].close), 2)}</td>
                 <td class="changeWithIcon"><p>${changePercent}% ${icn}</p></td>
-                <td>${nFormatter(coin.coinInfoOHLC[0].market_cap.toFixed(2), 2)}</td>
-                <td>${nFormatter(coin.coinInfoOHLC[0].volume.toFixed(2), 2)}</td>
+                <td>${GetCurrencySymbol()} ${nFormatter(FormatCurrency(coin.coinInfoOHLC[0].market_cap), 2)}</td>
+                <td>${GetCurrencySymbol()} ${nFormatter(FormatCurrency(coin.coinInfoOHLC[0].volume), 2)}</td>
                 <td class="hideCoin">${removeIcon}</td>
                 <td class="favCoin">${favIcon}</td>`
         ;
@@ -324,7 +541,7 @@ function AddTableRow(coin) {
 function nFormatter(num, digits) {
     const lookup = [
         { value: 1, symbol: "" },
-        { value: 1e3, symbol: "k" },
+        { value: 1e3, symbol: "K" },
         { value: 1e6, symbol: "M" },
         { value: 1e9, symbol: "B" },
         { value: 1e12, symbol: "T" },
@@ -338,13 +555,33 @@ function nFormatter(num, digits) {
     return item ? (num / item.value).toFixed(digits).replace(rx, "$1") + item.symbol : "0";
 }
 
+function GetColor(coinid) {
+    let color = colorMap.find(c => c.coinid == coinid)
+
+    if (color != null)
+        return color.color;
+    for (let col of COLORS) {
+        if (colorMap.find(c => c.color == col) == null) {
+            colorMap.push({ coinid: coinid, color: col })
+            return col;
+        }
+    }
+}
+function removeColor(coinid) {
+    let color = colorMap.find(c => c.coinid == coinid)
+    if (color != null) {
+        colorMap.splice(colorMap.indexOf(coinTocolorBeRemoved), 1);
+    }
+}
+
+
 function drawChart() {
 
     let dataSets = []
     let idx = 0
     for (const coin of tickerArrayLastDay) {
         const locDataSet = coin.data.map(c => c.price)
-        var randomColor = COLORS[idx]
+        var randomColor = GetColor(coin.symname)
 
         const dsObj =
         {
@@ -394,8 +631,8 @@ function drawChartMultiAxis() {
     let y = 0
     let idx = 0
     for (const coin of tickerArrayLastDay) {
-        const locDataSet = coin.data.map(c => c.price)
-        var randomColor = COLORS[idx];
+        const locDataSet = coin.data.map(c => FormatCurrency(c.price))
+        var randomColor = GetColor(coin.symname);
 
         const dsObj =
         {
@@ -407,29 +644,51 @@ function drawChartMultiAxis() {
         }
 
         datasets.push(dsObj)
-        if (y == 0) {
-            scales[coin.coinid] = {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                title: { text: coin.coinid },
+        scales[coin.coinid] = {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: { text: coin.coinid },
+            grid: {
+                drawOnChartArea: false, // only want the grid lines for one axis to show up
+            },
+            ticks: {
+                fontColor: randomColor,
+                color: randomColor
             }
         }
-        else {
-            scales[coin.coinid] = {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                title: { text: coin.coinid },
-                grid: {
-                    drawOnChartArea: false, // only want the grid lines for one axis to show up
-                },
-            }
-        }
-        y++;
-        idx++;
-        if (idx > 7)
-            idx = 0
+
+        // if (y == 0) {
+        //     scales[coin.coinid] = {
+        //         type: 'linear',
+        //         display: true,
+        //         position: 'right',
+        //         title: { text: coin.coinid },
+        //         ticks: {
+        //             fontColor: randomColor,
+        //             color:randomColor
+        //         }
+        //     }
+        // }
+        // else {
+        //     scales[coin.coinid] = {
+        //         type: 'linear',
+        //         display: true,
+        //         position: 'right',
+        //         title: { text: coin.coinid },
+        //         grid: {
+        //             drawOnChartArea: false, // only want the grid lines for one axis to show up
+        //         },
+        //         ticks: {
+        //             fontColor: randomColor,
+        //             color:randomColor
+        //         }
+        //     }
+        // }
+        // y++;
+        // idx++;
+        // if (idx > 7)
+        //     idx = 0
     }
 
     const data = {
@@ -450,7 +709,7 @@ function drawChartMultiAxis() {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Compare Coins - Multi Axis'
+                    text: 'Compare Coins - Last 24 Hours - ' + currencySelected
                 }
             },
             scales: scales
@@ -458,10 +717,118 @@ function drawChartMultiAxis() {
     };
 
     distroyChart("chartsSection")
-
+    lineChartRef = null;
     new Chart(document.getElementById("chartsSection"), config);
 }
 
+
+function drawChartMultiAxisLive() {
+
+
+    let labels = [];
+    let datasets = [];
+    let scales = {}
+
+    if (lineChartRef != null) {
+        labels = lineChartRef.data.labels
+        datasets = lineChartRef.data.datasets;
+    }
+
+
+    for (const coin of tickerArrayBinance) {
+        // labels = coin.prices.map(c => c.time)
+
+        // const locDataSet = coin.prices.map(c => c.price)
+        var randomColor = GetColor(coin.coin);
+        for (const t of coin.prices.map(c => c.time)) {
+            let ttt = new Date(t);
+            let tt = ttt.getHours() + ":" + ttt.getMinutes() + ":" + ttt.getSeconds();
+            if (!labels.includes(tt))
+                labels.push(tt)
+        }
+
+        let locDataSet = datasets.find(c => c.label == coin.coin)
+        // console.log(locDataSet)
+
+        if (locDataSet != null) {
+            // locDataSet.data.push(coin.prices[coin.prices.length - 1].price)
+            locDataSet.data.push(FormatCurrency(coin.prices[coin.prices.length - 1].price))
+            // console.log(locDataSet)
+        }
+        else {
+            locDataSet = []
+            locDataSet.push(FormatCurrency(coin.prices[coin.prices.length - 1].price))
+            const dsObj =
+            {
+                label: coin.coin,
+                data: locDataSet,
+                borderColor: randomColor,
+                backgroundColor: randomColor,
+                yAxisID: coin.coin,
+            }
+            datasets.push(dsObj)
+        }
+
+        scales[coin.coin] = {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: { text: coin.coin },
+            grid: {
+                drawOnChartArea: false, // only want the grid lines for one axis to show up
+            },
+            ticks: {
+                fontColor: randomColor,
+                color: randomColor
+            }
+        }
+
+
+    }
+
+    // console.log(scales)
+    const data = {
+        labels: labels,
+        datasets: datasets
+    };
+
+    // console.log(data)
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Live Coins Prices - ' + currencySelected
+                }
+            },
+            scales: scales
+        },
+    };
+
+    if (lineChartRef == null) {
+        // distroyChart("chartsSectionLive")
+        distroyChart("chartsSection")
+
+        // new Chart(document.getElementById("chartsSectionLive"), config);
+        lineChartRef = new Chart(document.getElementById("chartsSection"), config);
+    }
+    else {
+        // lineChartRef
+        lineChartRef.data.labels = labels;
+        lineChartRef.data.datasets = datasets;
+        lineChartRef.options = config.options;
+        lineChartRef.update();
+    }
+}
 
 function DrawBarChart() {
 
@@ -473,7 +840,7 @@ function DrawBarChart() {
         const locDataSet = coin.data[coin.data.length - 1].price
         dataSets.push(locDataSet)
 
-        var randomColor = COLORS[idx]
+        var randomColor = GetColor(coin.symname);
         backgroundColor.push(randomColor)
 
         labels.push(coin.coinid)
@@ -481,7 +848,7 @@ function DrawBarChart() {
         if (idx > 7)
             idx = 0
     }
-    console.log(dataSets)
+    // console.log(dataSets)
 
     distroyChart("chartsSection2")
 
@@ -521,7 +888,7 @@ function createCoinCardBySearch() {
 
     const coinsToDraw = newArray.filter(i => !coinInfoList.includes(i.id))
     let html = ""
-    console.log(coinsToDraw)
+    // console.log(coinsToDraw)
 
     for (let c of coinsToDraw) {
         html += `<li onclick="AddCoinToTable(this.id)" id="${c.id}" ><a>${c.name}</a></li>`
@@ -531,12 +898,185 @@ function createCoinCardBySearch() {
 
 async function AddCoinToTable(coinID) {
     closeList()
+    hidePage()
     await GetCoinInfoByID(coinID)
     addToLocalStorage("CoinInfoArray", coinInfoArray)
     AddTableRow(coinInfoArray[coinInfoArray.length - 1])
-
+    showPage()
 }
 function closeList() {
     document.getElementById("searchInputId").value = ""
     document.getElementById("searchList").style.display = "none"
+}
+
+
+
+//----------------------------------------
+
+function RefreshData2() {
+    const dataInLocalStorage1 = localStorage.getItem("CoinListArray");
+    const dataInLocalStorage2 = localStorage.getItem("CoinInfoArray");
+    const dataInLocalStorage3 = localStorage.getItem("TickerArray");
+
+    if (dataInLocalStorage1 && dataInLocalStorage2 && dataInLocalStorage3) {
+        coinListArray = JSON.parse(dataInLocalStorage1);
+        coinInfoArray = JSON.parse(dataInLocalStorage2);
+        tickerArray = JSON.parse(dataInLocalStorage3);
+        DrawMainTable()
+    }
+    else {
+        RefreshCoinArray2()
+            .then(async (res) => await RefreshCoinInfoArray2(res))
+            .then(async (res) => await RefreshTickersArray2(res))
+            .then(() => DrawMainTable())
+    }
+}
+
+async function RefreshCoinInfoArray2(res) {
+    console.log("RefreshCoinInfoArray2...")
+    // console.log("coinListArray2 length:" + res.length)
+    for (let i = 0; i < numOfCoins; i++)
+        await GetCoinInfoByID2(res[i].id)
+    // return res
+    //     .slice(0, numOfCoins)
+    //     .map(async (c) => await GetCoinInfoByID2(c.id))
+
+    // let promises = coinListArray.slice(0, numOfCoins).map(c => {
+    //     GetCoinInfoByID2(c.id).then(Promise.resolve())
+    // });
+    //return promises.reduce(p => Promise.resolve())
+    // return coinListArray.slice(0, numOfCoins).reduce((c) => GetCoinInfoByID2(c.id), Promise.resolve())
+
+    //return Promise.all(promises);
+}
+
+async function GetCoinInfoByID2(id) {
+
+
+    let arr1 = await getCoinByID2(id)
+    let arr2 = await getCoinOHLCByID2(id)
+
+    const itemObj = { id: id, coinInfo: arr1, coinInfoOHLC: arr2, fav: false }
+    coinInfoArray.push(itemObj)
+    addToLocalStorage("CoinInfoArray", coinInfoArray);
+
+    // return new Promise((resolve, reject) => {
+    //     let arr1;
+    //     let arr2;
+    //     getCoinByID2(id)
+    //         .then((res1) => {
+    //             arr1 = res1
+    //             getCoinOHLCByID2(id, res1)
+    //                 .then((res2) => arr2 = res2)
+    //                 .then(() => {
+    //                     const itemObj = { id: id, coinInfo: arr1, coinInfoOHLC: arr2, fav: false }
+    //                     coinInfoArray.push(itemObj)
+    //                     addToLocalStorage("CoinInfoArray", coinInfoArray);
+    //                 })
+    //                 resolve()
+    //         });
+    // })
+
+}
+
+
+async function getCoinOHLCByID2(id, res1) {
+    return new Promise((resolve, reject) => {
+
+        $.ajax({
+            url: CoinListURL + "/" + id + "/ohlcv/today",
+            headers: {
+            },
+            type: "GET",
+            dataType: "json",
+            data: {
+            },
+            success: function (result) {
+                resolve(result, res1);
+            },
+            error: function () {
+                console.log("Error in fetching Coin Info Array OHCB");
+            }
+        });
+    }
+    )
+
+}
+
+async function getCoinByID2(id) {
+    return new Promise((resolve, reject) => {
+
+        $.ajax({
+            url: CoinListURL + "/" + id,
+            headers: {
+            },
+            type: "GET",
+            dataType: "json",
+            data: {
+            },
+            success: function (result) {
+                resolve(result);
+            },
+            error: function () {
+                console.log("Error in fetching Coin Info Array ");
+            }
+        });
+    }
+    )
+}
+
+
+function RefreshCoinArray2() {
+    return new Promise((resolve, reject) => {
+
+        console.log("RefreshCoinArray2...")
+
+        $.ajax({
+            url: CoinListURL,
+            headers: {
+            },
+            type: "GET",
+            dataType: "json",
+            data: {
+            },
+            success: function (result) {
+                let coinListArr = result.filter(a => a.rank >= 1 && a.rank <= 100 && a.id != 'usdt-tether');
+                coinListArray = coinListArr;
+                addToLocalStorage("CoinListArray", coinListArr);
+                resolve(coinListArr);
+            },
+            error: function () {
+                console.log("Error in fetching Coin List Array ");
+            }
+        });
+    });
+
+}
+
+async function RefreshTickersArray2(res) {
+    console.log("RefreshTickersArray2...")
+    return new Promise((resolve, reject) => {
+
+        $.ajax({
+            url: TickerURL,
+            headers: {
+            },
+            type: "GET",
+            dataType: "json",
+            data: {
+            },
+            success: function (result) {
+                const coinListArr = result.filter(a => a.rank >= 1 && a.rank <= totalCoins);
+                tickerArray = coinListArr
+                addToLocalStorage("TickerArray", tickerArray);
+                resolve(result);
+            },
+            error: function () {
+                console.log("Error in fetching Coin Info Array ");
+            }
+        });
+    }
+    )
+
+
 }
